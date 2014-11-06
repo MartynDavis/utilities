@@ -1,6 +1,6 @@
 @echo off
     
-    rem Synchronizes the changes to upstream repository (can be overridden)
+    rem Synchronizes the changes from upstream repositories (can be overridden)
     rem
     rem Source: https://help.github.com/articles/syncing-a-fork/
     
@@ -20,7 +20,7 @@
     echo usage: %THIS% [branch [remote]]
     echo.
     echo        branch - Branch to synchronize to ^(default is currently selected branch^)
-    echo        remote - Remote to synchronize to ^(default is "%GS_REMOTE_DEFAULT%"^)
+    echo        remote - Remote to synchronize from ^(default is "%GS_REMOTE_DEFAULT%"^)
     echo.
     exit /B 1
     
