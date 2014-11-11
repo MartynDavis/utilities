@@ -1,0 +1,159 @@
+#!/bin/bash
+
+_GS_REMOTE_DEFAULT=upstream
+_GS_REMOTE=${_GS_REMOTE_DEFAULT}
+
+echoError() {
+    cat <<< "$@" 1>&2; 
+}
+
+usage() {
+    if [ "$#" -gt 0 ]; then
+        echoError ""
+        echoError "$@"
+    fi
+    echoError ""
+    echoError "Usage: $0 [-r remote] [branch]"
+    echoError ""
+    echoError "       -r remote - Renote to synchronize from (default is ${_GS_REMOTE_DEFAULT})"
+    echoError ""
+    echoError "       branch    - Branch to synchronize to (default is currently selected branch)"
+    echoError ""
+    exit 1
+}
+
+while getopts ":r:" o; do
+    case "${o}" in
+        r)
+            _GS_REMOTE=${OPTARG}
+            ;;
+        *)
+            usage "Unknown option specified"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ $# -gt 1 ]; then
+    usage
+fi
+
+_GS_BRANCH=$1
+_GS_BRANCH_SELECTED=0
+_GS_BRANCH_CHANGED=0
+if [ -z "${_GS_REMOTE}" ]; then
+    _GS_REMOTE=${_GS_REMOTE_DEFAULT}
+fi
+
+if [ ! -d .git ]; then
+    echoError "Current folder does not belong to a git repository!"
+    exit 1
+fi
+
+echo
+echo "Syncing with '${_GS_REMOTE}' repository"
+echo
+
+_GS_VALID=0
+declare -a _GS_NAMES=()
+echo Checking remotes...
+while read -r _LINE ; do
+    if [ "${_LINE}" == "${_GS_REMOTE}" ]; then
+        _GS_VALID=1
+    fi
+    _GS_NAMES+=( "${_LINE}" )
+done < <(git remote show)
+
+if [ ${_GS_VALID} -eq 0 ]; then
+    echo
+    echo "FAIL: Remote '${_GS_REMOTE}' does not exist"
+    echo
+    echo "Valid remotes are:"
+    for _ITEM in "${_GS_NAMES[@]}"; do
+        echo "    $_ITEM"
+    done
+    echo
+    exit 1
+fi
+
+_GS_VALID=0
+declare -a _GS_NAMES=()
+unset _GS_BRANCH_PREVIOUS
+echo Checking branches...
+while read -r _LINE ; do
+    _FIRST=${_LINE:0:1}
+    if [ "${_FIRST}" == "*" ]; then
+        _GS_BRANCH_PREVIOUS=${_LINE:2}
+        if [ -z ${_GS_BRANCH} ]; then
+            echo "Using default branch '${_GS_BRANCH_PREVIOUS}'"
+            _GS_VALID=1
+            _GS_BRANCH=${_GS_BRANCH_PREVIOUS}
+            _GS_BRANCH_SELECTED=1
+        else
+            if [ "${_GS_BRANCH}" == "${_GS_BRANCH_PREVIOUS}" ]; then
+                _GS_VALID=1
+                _GS_BRANCH_SELECTED=1
+            fi
+        fi
+        _GS_NAMES+=( "${_GS_BRANCH_PREVIOUS}" )
+    else
+        if [ ! -z ${_GS_BRANCH} ]; then
+            if [ "${_GS_BRANCH}" == "${_LINE}" ]; then
+                _GS_VALID=1
+            fi
+        fi
+        _GS_NAMES+=( "${_LINE}" )
+    fi
+done < <(git branch --list)
+
+if [ ${_GS_VALID} -eq 0 ]; then
+    echo
+    echo "FAIL: Branch '${_GS_BRANCH}' does not exist"
+    echo
+    echo "Valid branches are:"
+    for _ITEM in "${_GS_NAMES[@]}"; do
+        echo "    $_ITEM"
+    done
+    echo
+    exit 1
+fi
+
+echo "Fetching '${_GS_REMOTE}' information..."
+git fetch "${_GS_REMOTE}"
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'git fetch ${_GS_REMOTE}' failed"
+    echo
+    exit 1
+fi
+
+if [ ${_GS_BRANCH_SELECTED} -eq 0 ]; then
+    echo "Checking out '${_GS_BRANCH}'..."
+    git checkout "${_GS_BRANCH}"
+    if [ $? -ne 0 ]; then
+        echo
+        echo "FAIL: 'git checkout ${_GS_BRANCH}' failed"
+        echo
+        exit 1
+    fi
+    _GS_BRANCH_CHANGED=1
+fi
+
+echo "Merging ${_GS_REMOTE}/${_GS_BRANCH}..."
+git merge "${_GS_REMOTE}/${_GS_BRANCH}"
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'git merge ${_GS_REMOTE}/${_GS_BRANCH}' failed"
+    echo
+    exit 1
+fi
+
+if [ ${_GS_BRANCH_CHANGED} -ne 0 ]; then
+    echo
+    echo "NOTE: Branch '${_GS_BRANCH}' is checked out. Previously '${_GS_PREVIOUS_BRANCH}' was checked out"
+fi
+
+echo
+echo Done.
+echo
+
