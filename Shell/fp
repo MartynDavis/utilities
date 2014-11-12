@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ -z $1 ]; then
+	echo "Showing all processes..."
+	ps -ef
+else
+	echo "Showing processes containing '$1'..."
+	ps -ef | grep -i "$1"
+fi
