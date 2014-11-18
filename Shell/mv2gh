@@ -1,0 +1,151 @@
+#!/bin/bash
+
+_MTGH_REMOTE_DEFAULT=origin
+_MTGH_REMOTE=${_MTGH_REMOTE_DEFAULT}
+unset _MTGH_BRANCH
+
+echoError() {
+    cat <<< "$@" 1>&2; 
+}
+
+usage() {
+    if [ "$#" -gt 0 ]; then
+        echoError ""
+        echoError "$@"
+    fi
+    echoError ""
+    echoError "Usage: $0 [-b branch] [-r remote] URL"
+    echoError ""
+    echoError "       -b branch - Branch to move to remote (default is currently selected branch)"
+    echoError "       -r remote - Remote to create (default is ${_MTGH_REMOTE_DEFAULT})"
+    echoError ""
+    echoError "       URL - URL of GitHub to move local project to"
+    echoError ""
+    exit 1
+}
+
+while getopts ":r:" o; do
+    case "${o}" in
+        b)
+            _MTGH_BRANCH=${OPTARG}
+            ;;
+        r)
+            _MTGH_REMOTE=${OPTARG}
+            ;;
+        *)
+            usage "Unknown option specified"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ $# -ne 1 ]; then
+    usage
+fi
+
+_MTGH_GITHUB_URL=$1
+if [ -z "${_MTGH_REMOTE}" ]; then
+    _MTGH_REMOTE=${_MTGH_REMOTE_DEFAULT}
+fi
+
+if [ ! -d .git ]; then
+    echoError "Current folder does not belong to a git repository!"
+    exit 1
+fi
+
+echo
+echo "Moving local git repository to '${_MTGH_GITHUB_URL}'"
+echo
+
+_MTGH_EXISTS=0
+declare -a _MTGH_NAMES=()
+echo Checking remotes...
+while read -r _LINE ; do
+    if [ "${_LINE}" == "${_MTGH_REMOTE}" ]; then
+        _MTGH_EXISTS=1
+    fi
+    _MTGH_NAMES+=( "${_LINE}" )
+done < <(git remote show)
+
+if [ ${_MTGH_EXISTS} -ne 0 ]; then
+    echo
+    echo "FAIL: Remote '${_MTGH_REMOTE}' already exists"
+    echo
+    echo "Existing remotes are:"
+    for _ITEM in "${_MTGH_NAMES[@]}"; do
+        echo "    $_ITEM"
+    done
+    echo
+    exit 1
+fi
+
+_MTGH_VALID=0
+declare -a _MTGH_NAMES=()
+echo Checking branches...
+while read -r _LINE ; do
+    _FIRST=${_LINE:0:1}
+    if [ "${_FIRST}" == "*" ]; then
+        _BRANCH=${_LINE:2}
+        if [ -z ${_MTGH_BRANCH} ]; then
+            echo "Using default branch '${_BRANCH}'"
+            _MTGH_VALID=1
+            _MTGH_BRANCH=${_BRANCH}
+        else
+            if [ "${_MTGH_BRANCH}" == "${_BRANCH}" ]; then
+                _MTGH_VALID=1
+            fi
+        fi
+        _MTGH_NAMES+=( "${_BRANCH}" )
+    else
+        if [ ! -z ${_MTGH_BRANCH} ]; then
+            if [ "${_MTGH_BRANCH}" == "${_LINE}" ]; then
+                _MTGH_VALID=1
+            fi
+        fi
+        _MTGH_NAMES+=( "${_LINE}" )
+    fi
+done < <(git branch --list)
+
+if [ ${_MTGH_VALID} -eq 0 ]; then
+    echo
+    echo "FAIL: Branch '${_MTGH_BRANCH}' does not exist"
+    echo
+    echo "Valid branches are:"
+    for _ITEM in "${_MTGH_NAMES[@]}"; do
+        echo "    $_ITEM"
+    done
+    echo
+    exit 1
+fi
+
+echo "Defining remote '${_MTGH_REMOTE}' to reference '${_MTGH_GITHUB_URL}'..."
+git remote add "${_MTGH_REMOTE}" "${_MTGH_GITHUB_URL}"
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'git remote add ${_MTGH_REMOTE} ${_MTGH_GITHUB_URL}' failed"
+    echo
+    exit 1
+fi
+
+echo "Verifying remotes..."
+git remote -v
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'git remote -v' failed"
+    echo
+    exit 1
+fi
+
+echo "Pushing changes to ${_MTGH_REMOTE} ${_MTGH_BRANCH}..."
+git push "${_MTGH_REMOTE}" "${_MTGH_BRANCH}"
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'git push ${_MTGH_REMOTE} ${_MTGH_BRANCH}' failed"
+    echo
+    exit 1
+fi
+
+echo
+echo Done.
+echo
+

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+        echo "usage: $0 URL"
+	exit 1
+fi
+
+echo "Downloading '$1' saving it as '${1##*/}'..."
+curl "$1" -o "${1##*/}"
+if [ $? -ne 0 ]; then
+    echo
+    echo "FAIL: 'curl \"$1\" -o \"${1##*/}\"' failed"
+    echo
+    exit 1
+fi
+

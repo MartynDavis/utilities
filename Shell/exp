@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo "Opening finder on current directory..."
+	open .
+else
+        if [ -d "$1" ]; then
+	    echo "Opening finder on '$1'..."
+	    open "$1"
+        else
+            echo "FAIL: Folder '$1' does not exist!"
+        fi
+fi
