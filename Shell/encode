@@ -1,0 +1,58 @@
+#!/bin/bash
+
+_ENCODE=1
+
+echoError() {
+    cat <<< "$@" 1>&2; 
+}
+
+usage() {
+    if [ "$#" -gt 0 ]; then
+        echoError ""
+        echoError "$@"
+    fi
+    echoError ""
+    echoError "Usage: $0 [-d] value ..."
+    echoError ""
+    echoError "       -d    - decode"
+    echoError ""
+    echoError "       value - Value to encode, or decode"
+    echoError ""
+    exit 1
+}
+
+while getopts ":d" o; do
+    case "${o}" in
+        d)
+            _ENCODE=0
+            ;;
+        *)
+            usage "Unknown option specified"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+if [ $_ENCODE -eq 1 ]; then
+   echo Encoding...
+else
+   echo Decoding...
+fi
+echo
+
+for var in "$@"
+do
+    if [ $_ENCODE -eq 1 ]; then
+       echo -n $var | perl -MHTML::Entities -le 'while(<>) {print "\"$_\" = \"" . encode_entities($_) . "\"";}'
+    else
+       echo -n $var | perl -MHTML::Entities -le 'while(<>) {print "\"$_\" = \"" . decode_entities($_) . "\"";}'
+    fi
+done
+
+echo
+echo Done.
+echo

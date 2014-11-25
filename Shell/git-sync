@@ -15,7 +15,7 @@ usage() {
     echoError ""
     echoError "Usage: $0 [-r remote] [branch]"
     echoError ""
-    echoError "       -r remote - Renote to synchronize from (default is ${_GS_REMOTE_DEFAULT})"
+    echoError "       -r remote - Remote to synchronize from (default is ${_GS_REMOTE_DEFAULT})"
     echoError ""
     echoError "       branch    - Branch to synchronize to (default is currently selected branch)"
     echoError ""
