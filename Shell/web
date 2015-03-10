@@ -10,10 +10,12 @@ usage() {
         echoError "$@"
     fi
     echoError ""
-    echoError "Usage: $0 [-c] [-f] [-s] file"
+    echoError "Usage: $0 [-c] [-f] [-g] [-n] [-s] file"
     echoError ""
     echoError "       -c    - Launch Chrome"
     echoError "       -f    - Launch Firefox"
+    echoError "       -g    - Do not bring application to the foreground"
+    echoError "       -n    - Start a new instance of the application"
     echoError "       -s    - Launch Safari (default)"
     echoError ""
     echoError "       File to open"
@@ -22,14 +24,21 @@ usage() {
 }
 
 _APPNAME="Safari"
+_OPENARGS=""
 
-while getopts ":cfs" o; do
+while getopts ":cfgns" o; do
     case "${o}" in
         c)
             _APPNAME="Google Chrome"
             ;;
         f)
             _APPNAME="Firefox"
+            ;;
+        g)
+            _OPENARGS="$_OPENARGS -${o}"
+            ;;
+        n)
+            _OPENARGS="$_OPENARGS -${o}"
             ;;
         s)
             _APPNAME="Safari"
@@ -59,4 +68,4 @@ fi
 
 file=`perl -e 'use Cwd "abs_path";print abs_path(shift)' "$1"`
 echo "Using '$_APPNAME' to open '$file'..."
-open -a "/Applications/$_APPNAME.app" "$file"
+open $_OPENARGS -a "/Applications/$_APPNAME.app" "$file"
