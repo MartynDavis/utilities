@@ -1,0 +1,62 @@
+#!/bin/bash
+
+echoError() {
+    cat <<< "$@" 1>&2; 
+}
+
+usage() {
+    if [ "$#" -gt 0 ]; then
+        echoError ""
+        echoError "$@"
+    fi
+    echoError ""
+    echoError "Usage: $0 [-c] [-f] [-s] file"
+    echoError ""
+    echoError "       -c    - Launch Chrome"
+    echoError "       -f    - Launch Firefox"
+    echoError "       -s    - Launch Safari (default)"
+    echoError ""
+    echoError "       File to open"
+    echoError ""
+    exit 1
+}
+
+_APPNAME="Safari"
+
+while getopts ":cfs" o; do
+    case "${o}" in
+        c)
+            _APPNAME="Google Chrome"
+            ;;
+        f)
+            _APPNAME="Firefox"
+            ;;
+        s)
+            _APPNAME="Safari"
+            ;;
+        *)
+            usage "Unknown option specified"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+if [ ! -f "$1" ]; then
+    echo "Error: '$1' does not exist!"
+    exit 1
+fi
+
+_APP=/Applications/$_APPNAME.app
+
+if [ ! -e "$_APP" ]; then
+    echo "Error: Application '$_APPNAME' does not exist ($_APP)!"
+    exit 1
+fi
+
+file=`perl -e 'use Cwd "abs_path";print abs_path(shift)' "$1"`
+echo "Using '$_APPNAME' to open '$file'..."
+open -a "/Applications/$_APPNAME.app" "$file"
