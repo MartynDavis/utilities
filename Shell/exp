@@ -1,13 +1,43 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-	echo "Opening finder on current directory..."
-	open .
-else
-        if [ -d "$1" ]; then
-	    echo "Opening finder on '$1'..."
-	    open "$1"
-        else
-            echo "FAIL: Folder '$1' does not exist!"
-        fi
+echoError() {
+    cat <<< "$@" 1>&2; 
+}
+
+usage() {
+    if [ "$#" -gt 0 ]; then
+        echoError ""
+        echoError "$@"
+    fi
+    echoError ""
+    echoError "Usage: $0 [folder]"
+    echoError ""
+    echoError "       Opens a finder windows on the specified folder"
+    echoError ""
+    exit 1
+}
+
+while getopts ":" o; do
+    case "${o}" in
+    	*)
+            usage "Unknown option specified"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+_FOLDER=.
+
+if [ ! -z "$1" ]; then
+	_FOLDER="$1"
 fi
+
+_FOLDER=`perl -e 'use Cwd "abs_path";print abs_path(shift)' "$_FOLDER"`
+
+if [ ! -d "$_FOLDER" ]; then
+	echo "Error: Folder '$_FOLDER' does not exist"
+	exit 1
+fi
+
+echo "Opening finder on '$_FOLDER'..."
+open "$_FOLDER"
